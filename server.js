@@ -255,7 +255,32 @@ const messageBuilders = {
 //  Called by the frontend for every Telegram notification event.
 //  The bot token NEVER leaves the server.
 //
-//  Body schema:
+//  Body schema:app.post("/api/notify", rateLimitMiddleware, async function (req, res) {
+  const { event, seller, data } = req.body;
+  
+  // تجهيز البيانات
+  const clean = {
+    event: event || "unknown",
+    seller: String(seller || "unknown").substring(0, 50),
+    data: typeof data === "object" ? data : { raw: data },
+    timestamp: Date.now()
+  };
+
+  try {
+    // السطر ده هو اللي هيحول الـ null لبيانات في Firebase
+    await db.ref("notifications").push(clean);
+
+    // إرسال التليجرام
+    const text = `🔔 إشعار جديد\n👤 البائع: ${clean.seller}\n📝 الحدث: ${clean.event}`;
+    await sendTelegram(text);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("خطأ:", err);
+    return res.status(500).json({ ok: false, error: "failed" });
+  }
+});
+
 //  {
 //    eventType : "whatsapp_click" | "waitlist" | "sale" | "account_request"
 //    payload   : { ...event-specific fields }
